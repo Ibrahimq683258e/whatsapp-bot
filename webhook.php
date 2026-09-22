@@ -1,4 +1,4 @@
-```php
+
 <?php
 
 // ==============================
@@ -7,15 +7,11 @@
 
 $verify_token = "my_secret_token_123";
 
-// Paste your NEW access token here.
-// Do NOT send the token to me.
-$accessToken = "EAArC1ZBrUHQ0BSvX0YUBwiHaQPpAyFi6HxnRWCWzn3ymCAvZCujt7EjJZAWdEeNK0VcVaE4nXcnJJsxncMxrmRWPaWcWankrMyTWVfkqZC8h398RbZAs2dZA8feZAUZCDItKbhaVogWrjwE6CBw1Us2wDgMJZBVvfmWeKoj6ir3oYZBIFgozHCnxp4EZACPMlHPs42j0aO9VDPfnTUU2iykMfBD8hG4T64JTVoJQZBOnmFhZAZAxNhPfJTffQv29NN2r7ZA6rBpXaYP36Eg2CgF5ETdHJQRe0y1";
+// USE YOUR NEW ACCESS TOKEN HERE.
+// Do not send it to me.
+$accessToken = "EAArC1ZBrUHQ0BSt9rZBzCHPfQ9zrb6tydpkUZC73RRRpDz88g6Bi1LRhcWLbYawocFfO64VqoDD2zTIMMdQWZBmrDVAJYdbmDuGuZA5ZCifZCSrZBkOoxSIPuHMZCiCCjpNZAdhGrHdjEBlISvbZClOt697ZCL7jnQ0eZCEK37R3QhLB9pFnJLSGnBc9Hbsawjy7CshjnNDZAZCSz1W5U9Qa0o4sNEizBQfLVcdFCMrvutPPADvz2N04EY3u8lj4udRIeu25ahSV4HCCNSYQW4ElnH6U8Q0WDar";
 
 $phoneNumberId = "1350151684842334";
-
-// Use the API version you are currently using/configured for.
-// Your existing sender used v20.0.
-$apiVersion = "v20.0";
 
 
 // ==============================
@@ -48,31 +44,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $input = file_get_contents('php://input');
 
-    // Keep the existing log.
+    // Save incoming webhook.
     file_put_contents(
         __DIR__ . '/log.txt',
         date('Y-m-d H:i:s') . ' - ' . $input . PHP_EOL . PHP_EOL,
         FILE_APPEND
     );
 
-    // Convert JSON into PHP array.
     $data = json_decode($input, true);
 
-    // Check that this is a WhatsApp message.
+    // Get the incoming WhatsApp message.
     $message = $data['entry'][0]['changes'][0]['value']['messages'][0] ?? null;
 
     if ($message) {
 
-        // Sender's WhatsApp number.
+        // Person who sent the message.
         $from = $message['from'] ?? '';
 
-        // Only handle text messages for now.
+        // Text they sent.
         $incomingText = $message['text']['body'] ?? '';
 
         if ($from !== '' && $incomingText !== '') {
 
             // ==============================
-            // BOT REPLY
+            // BOT RESPONSE
             // ==============================
 
             $reply = "Hello! 👋\n\n";
@@ -81,16 +76,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
             // ==============================
-            // SEND REPLY THROUGH WHATSAPP
+            // SEND WHATSAPP MESSAGE
             // ==============================
 
-            $url = "https://graph.facebook.com/"
-                 . $apiVersion
-                 . "/"
+            $url = "https://graph.facebook.com/v20.0/"
                  . $phoneNumberId
                  . "/messages";
 
-            $payload = [
+            $dataToSend = [
                 "messaging_product" => "whatsapp",
                 "recipient_type" => "individual",
                 "to" => $from,
@@ -114,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             curl_setopt(
                 $ch,
                 CURLOPT_POSTFIELDS,
-                json_encode($payload)
+                json_encode($dataToSend)
             );
 
             $response = curl_exec($ch);
@@ -126,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             curl_close($ch);
 
-            // Log the API response too.
+            // Save API response for debugging.
             file_put_contents(
                 __DIR__ . '/log.txt',
                 date('Y-m-d H:i:s')
@@ -140,7 +133,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Tell Meta that the webhook was received.
     http_response_code(200);
     echo 'EVENT_RECEIVED';
     exit;
@@ -153,5 +145,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 http_response_code(404);
 echo 'Not Found';
-```
+
+
 
