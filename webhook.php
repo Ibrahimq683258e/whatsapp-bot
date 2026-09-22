@@ -1,11 +1,20 @@
-
+```php
 <?php
+
+// ==============================
+// CONFIGURATION
+// ==============================
 
 $verify_token = "my_secret_token_123";
 
+// Put your NEW access token here.
+$accessToken = "EAArC1ZBrUHQ0BSt9rZBzCHPfQ9zrb6tydpkUZC73RRRpDz88g6Bi1LRhcWLbYawocFfO64VqoDD2zTIMMdQWZBmrDVAJYdbmDuGuZA5ZCifZCSrZBkOoxSIPuHMZCiCCjpNZAdhGrHdjEBlISvbZClOt697ZCL7jnQ0eZCEK37R3QhLB9pFnJLSGnBc9Hbsawjy7CshjnNDZAZCSz1W5U9Qa0o4sNEizBQfLVcdFCMrvutPPADvz2N04EY3u8lj4udRIeu25ahSV4HCCNSYQW4ElnH6U8Q0WDar";
+
+$phoneNumberId = "1350151684842334";
+
 
 // ==============================
-// GET - META WEBHOOK VERIFICATION
+// GET - META VERIFICATION
 // ==============================
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -21,32 +30,112 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 
     http_response_code(403);
-    echo 'Forbidden';
+    echo "Forbidden";
     exit;
 }
 
 
 // ==============================
-// POST - WHATSAPP WEBHOOK
+// POST - RECEIVE WHATSAPP MESSAGE
 // ==============================
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    // Read the data sent by Meta.
     $input = file_get_contents('php://input');
 
-    // Save it for debugging.
+    // Save incoming data.
     file_put_contents(
         __DIR__ . '/log.txt',
         date('Y-m-d H:i:s') . " - " . $input . PHP_EOL . PHP_EOL,
         FILE_APPEND
     );
 
-    // Tell Meta that we received it.
+    // Convert JSON to PHP array.
+    $data = json_decode($input, true);
+
+    // Find the incoming message.
+    $message = $data['entry'][0]['changes'][0]['value']['messages'][0] ?? null;
+
+    if ($message !== null) {
+
+        // Get sender's WhatsApp number.
+        $from = $message['from'] ?? '';
+
+        // Get message text.
+        $incomingText = $message['text']['body'] ?? '';
+
+        if ($from !== '' && $incomingText !== '') {
+
+            // ==============================
+            // BOT REPLY
+            // ==============================
+
+            $reply = "Hello! 👋\n\n";
+            $reply .= "You said: " . $incomingText . "\n\n";
+            $reply .= "Welcome to my Business Bot 🚀";
+
+
+            // ==============================
+            // WHATSAPP CLOUD API
+            // ==============================
+
+            $url = "https://graph.facebook.com/v20.0/"
+                 . $phoneNumberId
+                 . "/messages";
+
+            $sendData = [
+                "messaging_product" => "whatsapp",
+                "recipient_type" => "individual",
+                "to" => $from,
+                "type" => "text",
+                "text" => [
+                    "preview_url" => false,
+                    "body" => $reply
+                ]
+            ];
+
+            $ch = curl_init($url);
+
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                "Authorization: Bearer " . $accessToken,
+                "Content-Type: application/json"
+            ]);
+
+            curl_setopt(
+                $ch,
+                CURLOPT_POSTFIELDS,
+                json_encode($sendData)
+            );
+
+            $response = curl_exec($ch);
+
+            $httpCode = curl_getinfo(
+                $ch,
+                CURLINFO_HTTP_CODE
+            );
+
+            curl_close($ch);
+
+            // Save the Cloud API response.
+            file_put_contents(
+                __DIR__ . '/log.txt',
+                date('Y-m-d H:i:s')
+                . " - SEND HTTP "
+                . $httpCode
+                . " - "
+                . $response
+                . PHP_EOL . PHP_EOL,
+                FILE_APPEND
+            );
+        }
+    }
+
+    // Tell Meta we received the webhook.
     http_response_code(200);
-
-    echo "WEBHOOK POST RECEIVED";
-
+    echo "EVENT_RECEIVED";
     exit;
 }
 
@@ -57,7 +146,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 http_response_code(404);
 echo "Not Found";
-
-
+```
 
 
