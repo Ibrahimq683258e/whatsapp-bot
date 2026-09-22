@@ -1,4 +1,3 @@
-```php
 <?php
 
 $verify_token = "my_secret_token_123";
@@ -39,4 +38,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 http_response_code(404);
 echo "Not Found";
-```
