@@ -16,6 +16,40 @@ $phoneNumberId = "1350151684842334";
 // NVIDIA model
 $nvidiaModel = "meta/llama-3.1-8b-instruct";
 
+// Debug log file
+$debugLogFile = __DIR__ . '/debug.log';
+
+function debugLog($message) {
+    global $debugLogFile;
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($debugLogFile, "[$timestamp] $message\n", FILE_APPEND);
+}
+
+
+// ==========================================
+// DEBUG VIEWER — visit yourbot.up.railway.app/webhook.php?debug=1
+// ==========================================
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['debug'])) {
+    header('Content-Type: text/plain');
+    if (file_exists($debugLogFile)) {
+        // Show the last ~200 lines
+        $lines = file($debugLogFile);
+        $lastLines = array_slice($lines, -200);
+        echo implode('', $lastLines);
+    } else {
+        echo "No debug log yet. Send a test WhatsApp message first.";
+    }
+    exit;
+}
+
+// Clear the debug log — visit yourbot.up.railway.app/webhook.php?clear=1
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['clear'])) {
+    file_put_contents($debugLogFile, '');
+    echo "Cleared.";
+    exit;
+}
+
 
 // ==========================================
 // META WEBHOOK VERIFICATION
@@ -48,10 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $input = file_get_contents('php://input');
 
-    error_log("========================================");
-    error_log("WHATSAPP INCOMING:");
-    error_log($input);
-    error_log("========================================");
+    debugLog("========================================");
+    debugLog("WHATSAPP INCOMING: " . $input);
 
     $data = json_decode($input, true);
 
@@ -63,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // This could be a status/update event rather than a message.
     if (!$message) {
-        error_log("NO MESSAGE FOUND IN WEBHOOK EVENT");
+        debugLog("NO MESSAGE FOUND IN WEBHOOK EVENT");
         http_response_code(200);
         echo "EVENT_RECEIVED";
         exit;
@@ -71,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Only process text messages.
     if (($message['type'] ?? '') !== 'text') {
-        error_log("MESSAGE TYPE IS NOT TEXT: " . ($message['type'] ?? 'unknown'));
+        debugLog("MESSAGE TYPE IS NOT TEXT: " . ($message['type'] ?? 'unknown'));
         http_response_code(200);
         echo "EVENT_RECEIVED";
         exit;
@@ -83,11 +115,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Incoming text
     $incomingText = $message['text']['body'] ?? '';
 
-    error_log("FROM: " . $from);
-    error_log("MESSAGE: " . $incomingText);
+    debugLog("FROM: " . $from);
+    debugLog("MESSAGE: " . $incomingText);
 
     if ($from === '' || $incomingText === '') {
-        error_log("MISSING SENDER OR MESSAGE TEXT");
+        debugLog("MISSING SENDER OR MESSAGE TEXT");
         http_response_code(200);
         echo "EVENT_RECEIVED";
         exit;
@@ -99,18 +131,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ==========================================
 
     if (!$whatsappAccessToken) {
-        error_log("ERROR: WHATSAPP_ACCESS_TOKEN IS NOT SET");
+        debugLog("ERROR: WHATSAPP_ACCESS_TOKEN IS NOT SET");
         http_response_code(200);
         echo "EVENT_RECEIVED";
         exit;
     }
 
     if (!$nvidiaApiKey) {
-        error_log("ERROR: NVIDIA_API_KEY IS NOT SET");
+        debugLog("ERROR: NVIDIA_API_KEY IS NOT SET");
         http_response_code(200);
         echo "EVENT_RECEIVED";
         exit;
     }
+
+    debugLog("Keys OK. WHATSAPP_ACCESS_TOKEN length: " . strlen($whatsappAccessToken) . ", NVIDIA_API_KEY length: " . strlen($nvidiaApiKey));
 
 
     // ==========================================
@@ -151,9 +185,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     curl_close($ch);
 
-    error_log("NVIDIA HTTP: " . $nvidiaHttpCode);
-    error_log("NVIDIA RESPONSE: " . $nvidiaResponse);
-    error_log("NVIDIA CURL ERROR: " . $nvidiaCurlError);
+    debugLog("NVIDIA HTTP: " . $nvidiaHttpCode);
+    debugLog("NVIDIA RESPONSE: " . $nvidiaResponse);
+    debugLog("NVIDIA CURL ERROR: " . $nvidiaCurlError);
 
 
     // ==========================================
@@ -199,10 +233,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     curl_close($ch);
 
-    error_log("WHATSAPP HTTP: " . $whatsappHttpCode);
-    error_log("WHATSAPP RESPONSE: " . $whatsappResponse);
-    error_log("WHATSAPP CURL ERROR: " . $whatsappCurlError);
-    error_log("========================================");
+    debugLog("WHATSAPP HTTP: " . $whatsappHttpCode);
+    debugLog("WHATSAPP RESPONSE: " . $whatsappResponse);
+    debugLog("WHATSAPP CURL ERROR: " . $whatsappCurlError);
+    debugLog("========================================");
 
 
     // ==========================================
@@ -221,5 +255,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 http_response_code(404);
 echo "Not Found";
-
 
