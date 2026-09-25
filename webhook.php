@@ -8,8 +8,10 @@
 $verify_token = "my_secret_token_123";
 
 // Get secrets from Railway environment variables
-$whatsappAccessToken = getenv('EAArC1ZBrUHQ0BSrG7eYhzcG3YZAN9eZBAZBKTcoxwzr9sQUfl2FKBWmlVFYHZAZBj5QzYeAydqQpmJsvIwwuS5XLg8IhGMBweqy88wYw0ZBVHWLWYckZBcqcrg10YRqZBX0vcXxpD0hvaL25Sni8HHWPDWkUx5Gn1YQpiEIJZBhwORwkoTc73PqQmOQeWMWBkJ7cFCSubakyuGLIzbF4MMd2heGvz1UpwyYLV0d4217qA9EkQuWiEMb3dHo0ml9ZBeNswbjKgi5kPZCmLWf00rFOx9oobDO8');
-$nvidiaApiKey = getenv('Nnvapi-0GCPIQbFiwX6a_-SExA4bOXGnm_zQ6RHtglanWTiEMYkqG2KdLiBJ37KFTigbVm_');
+// $whatsappAccessToken = getenv('EAArC1ZBrUHQ0BSrG7eYhzcG3YZAN9eZBAZBKTcoxwzr9sQUfl2FKBWmlVFYHZAZBj5QzYeAydqQpmJsvIwwuS5XLg8IhGMBweqy88wYw0ZBVHWLWYckZBcqcrg10YRqZBX0vcXxpD0hvaL25Sni8HHWPDWkUx5Gn1YQpiEIJZBhwORwkoTc73PqQmOQeWMWBkJ7cFCSubakyuGLIzbF4MMd2heGvz1UpwyYLV0d4217qA9EkQuWiEMb3dHo0ml9ZBeNswbjKgi5kPZCmLWf00rFOx9oobDO8');
+$whatsappAccessToken = getenv('WHATSAPP_ACCESS_TOKEN');
+// $nvidiaApiKey = getenv('Nnvapi-0GCPIQbFiwX6a_-SExA4bOXGnm_zQ6RHtglanWTiEMYkqG2KdLiBJ37KFTigbVm_');
+$nvidiaApiKey = getenv('NVIDIA_API_KEY');
 
 // Your WhatsApp Phone Number ID
 $phoneNumberId = "1350151684842334";
