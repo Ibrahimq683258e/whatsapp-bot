@@ -7,17 +7,14 @@
 
 $verify_token = "my_secret_token_123";
 
-// Meta WhatsApp access token
-$whatsappAccessToken = "EAArC1ZBrUHQ0BSt9rZBzCHPfQ9zrb6tydpkUZC73RRRpDz88g6Bi1LRhcWLbYawocFfO64VqoDD2zTIMMdQWZBmrDVAJYdbmDuGuZA5ZCifZCSrZBkOoxSIPuHMZCiCCjpNZAdhGrHdjEBlISvbZClOt697ZCL7jnQ0eZCEK37R3QhLB9pFnJLSGnBc9Hbsawjy7CshjnNDZAZCSz1W5U9Qa0o4sNEizBQfLVcdFCMrvutPPADvz2N04EY3u8lj4udRIeu25ahSV4HCCNSYQW4ElnH6U8Q0WDar";
-
-// NVIDIA API key
-$nvidiaApiKey = "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";
+// Get secrets from Railway environment variables
+$whatsappAccessToken = getenv('EAArC1ZBrUHQ0BSrG7eYhzcG3YZAN9eZBAZBKTcoxwzr9sQUfl2FKBWmlVFYHZAZBj5QzYeAydqQpmJsvIwwuS5XLg8IhGMBweqy88wYw0ZBVHWLWYckZBcqcrg10YRqZBX0vcXxpD0hvaL25Sni8HHWPDWkUx5Gn1YQpiEIJZBhwORwkoTc73PqQmOQeWMWBkJ7cFCSubakyuGLIzbF4MMd2heGvz1UpwyYLV0d4217qA9EkQuWiEMb3dHo0ml9ZBeNswbjKgi5kPZCmLWf00rFOx9oobDO8');
+$nvidiaApiKey = getenv('Nnvapi-0GCPIQbFiwX6a_-SExA4bOXGnm_zQ6RHtglanWTiEMYkqG2KdLiBJ37KFTigbVm_');
 
 // Your WhatsApp Phone Number ID
 $phoneNumberId = "1350151684842334";
 
 // NVIDIA model
-// Use the model name shown in your NVIDIA API Catalog/API page.
 $nvidiaModel = "meta/llama-3.1-8b-instruct";
 
 
@@ -52,14 +49,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $input = file_get_contents('php://input');
 
-    // Save incoming webhook for debugging.
+    // Show the actual incoming webhook in Railway logs.
     file_put_contents(
-        __DIR__ . '/log.txt',
-        date('Y-m-d H:i:s')
-        . " - INCOMING: "
-        . $input
-        . PHP_EOL . PHP_EOL,
-        FILE_APPEND
+        'php://stdout',
+        "========================================" . PHP_EOL .
+        "WHATSAPP INCOMING:" . PHP_EOL .
+        $input . PHP_EOL .
+        "========================================" . PHP_EOL
     );
 
     $data = json_decode($input, true);
@@ -70,7 +66,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $message = $data['entry'][0]['changes'][0]['value']['messages'][0] ?? null;
 
+    // This could be a status/update event rather than a message.
     if (!$message) {
+
+        file_put_contents(
+            'php://stdout',
+            "NO MESSAGE FOUND IN WEBHOOK EVENT" . PHP_EOL
+        );
+
+        http_response_code(200);
+        echo "EVENT_RECEIVED";
+        exit;
+    }
+
+    // Only process text messages.
+    if (($message['type'] ?? '') !== 'text') {
+
+        file_put_contents(
+            'php://stdout',
+            "MESSAGE TYPE IS NOT TEXT: " .
+            ($message['type'] ?? 'unknown') .
+            PHP_EOL
+        );
 
         http_response_code(200);
         echo "EVENT_RECEIVED";
@@ -83,7 +100,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Incoming text
     $incomingText = $message['text']['body'] ?? '';
 
+    file_put_contents(
+        'php://stdout',
+        "FROM: " . $from . PHP_EOL .
+        "MESSAGE: " . $incomingText . PHP_EOL
+    );
+
     if ($from === '' || $incomingText === '') {
+
+        file_put_contents(
+            'php://stdout',
+            "MISSING SENDER OR MESSAGE TEXT" . PHP_EOL
+        );
+
+        http_response_code(200);
+        echo "EVENT_RECEIVED";
+        exit;
+    }
+
+
+    // ==========================================
+    // CHECK API KEYS
+    // ==========================================
+
+    if (!$whatsappAccessToken) {
+
+        file_put_contents(
+            'php://stdout',
+            "ERROR: WHATSAPP_ACCESS_TOKEN IS NOT SET" . PHP_EOL
+        );
+
+        http_response_code(200);
+        echo "EVENT_RECEIVED";
+        exit;
+    }
+
+    if (!$nvidiaApiKey) {
+
+        file_put_contents(
+            'php://stdout',
+            "ERROR: NVIDIA_API_KEY IS NOT SET" . PHP_EOL
+        );
 
         http_response_code(200);
         echo "EVENT_RECEIVED";
@@ -95,18 +152,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // SEND MESSAGE TO NVIDIA
     // ==========================================
 
-    $nvidiaUrl = "https://integrate.api.nvidia.com/v1/chat/completions";
+    $nvidiaUrl =
+        "https://integrate.api.nvidia.com/v1/chat/completions";
 
     $nvidiaData = [
+
         "model" => $nvidiaModel,
 
         "messages" => [
+
             [
                 "role" => "system",
                 "content" =>
                     "You are a friendly WhatsApp business assistant. "
                     . "Keep your answers helpful, clear, and reasonably concise."
             ],
+
             [
                 "role" => "user",
                 "content" => $incomingText
@@ -141,22 +202,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         CURLINFO_HTTP_CODE
     );
 
+    $nvidiaCurlError = curl_error($ch);
+
     curl_close($ch);
 
 
     // ==========================================
-    // SAVE NVIDIA RESPONSE
+    // LOG NVIDIA RESPONSE
     // ==========================================
 
     file_put_contents(
-        __DIR__ . '/log.txt',
-        date('Y-m-d H:i:s')
-        . " - NVIDIA HTTP: "
-        . $nvidiaHttpCode
-        . " - "
-        . $nvidiaResponse
-        . PHP_EOL . PHP_EOL,
-        FILE_APPEND
+        'php://stdout',
+        "NVIDIA HTTP: " . $nvidiaHttpCode . PHP_EOL .
+        "NVIDIA RESPONSE: " . $nvidiaResponse . PHP_EOL .
+        "NVIDIA CURL ERROR: " . $nvidiaCurlError . PHP_EOL
     );
 
 
@@ -224,22 +283,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         CURLINFO_HTTP_CODE
     );
 
+    $whatsappCurlError = curl_error($ch);
+
     curl_close($ch);
 
 
     // ==========================================
-    // SAVE WHATSAPP API RESPONSE
+    // LOG WHATSAPP RESPONSE
     // ==========================================
 
     file_put_contents(
-        __DIR__ . '/log.txt',
-        date('Y-m-d H:i:s')
-        . " - WHATSAPP HTTP: "
-        . $whatsappHttpCode
-        . " - "
-        . $whatsappResponse
-        . PHP_EOL . PHP_EOL,
-        FILE_APPEND
+        'php://stdout',
+        "WHATSAPP HTTP: " . $whatsappHttpCode . PHP_EOL .
+        "WHATSAPP RESPONSE: " . $whatsappResponse . PHP_EOL .
+        "WHATSAPP CURL ERROR: " . $whatsappCurlError . PHP_EOL .
+        "========================================" . PHP_EOL
     );
 
 
