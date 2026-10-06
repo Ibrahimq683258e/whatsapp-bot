@@ -1,8 +1,8 @@
-export default async function handler(req, res) {
-  const VERIFY_TOKEN = "my_secret_token_123";
-  const PHONE_NUMBER_ID = "1350151684842334";
-  const ACCESS_TOKEN = "EAArC1ZBrUHQ0BSsQ70tveSx4svVaRLbdDJh69z3M8knnJzt3YktdADZA4fkDRZCqjHeTHOgqGdAWmZC09Y1HTHs6WZCel1YJYsI6R8itfTZC3LMgKJbbG0xldnvFZAyto5HWDwCi4JeRliZBJhwyi8wC4rQZCaAZCIT1INNqAZAZAnRVZBKZCT4tNfyGy9pR7R1LX0vl4CNa1rwiK50yPqS6hiWNKPv66cEA5bI6E9qlFfvZBRSReJIxRyRcwVin7DVU3Uo8TzZB84dsGHzc9LCvHH27nQqzuUgM";
+const VERIFY_TOKEN = "my_secret_token_123";
+const PHONE_NUMBER_ID = "1350151684842334";
+const ACCESS_TOKEN = "EAArC1ZBrUHQ0BSsQ70tveSx4svVaRLbdDJh69z3M8knnJzt3YktdADZA4fkDRZCqjHeTHOgqGdAWmZC09Y1HTHs6WZCel1YJYsI6R8itfTZC3LMgKJbbG0xldnvFZAyto5HWDwCi4JeRliZBJhwyi8wC4rQZCaAZCIT1INNqAZAZAnRVZBKZCT4tNfyGy9pR7R1LX0vl4CNa1rwiK50yPqS6hiWNKPv66cEA5bI6E9qlFfvZBRSReJIxRyRcwVin7DVU3Uo8TzZB84dsGHzc9LCvHH27nQqzuUgM";
 
+export default async function handler(req, res) {
   // ========== WEBHOOK VERIFICATION (GET) ==========
   if (req.method === "GET") {
     const mode = req.query["hub.mode"];
@@ -23,10 +23,9 @@ export default async function handler(req, res) {
       const body = req.body;
       console.log("Full incoming body:", JSON.stringify(body, null, 2));
 
-      // Always reply 200 quickly to Meta
+      // Always reply 200 quickly
       res.status(200).send("EVENT_RECEIVED");
 
-      // Safely extract the message
       const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
       if (message && message.type === "text") {
@@ -34,15 +33,12 @@ export default async function handler(req, res) {
         const text = message.text.body;
 
         console.log(`Received message from ${from}: ${text}`);
-
-        // Send reply
         await sendReply(from, `You said: ${text}`);
       } else {
-        console.log("No text message found in this webhook");
+        console.log("No text message found");
       }
     } catch (error) {
       console.error("Error processing message:", error.message);
-      console.error(error.stack);
     }
   }
 }
