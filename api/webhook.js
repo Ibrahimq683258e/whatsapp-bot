@@ -1,5 +1,7 @@
-export default function handler(req, res) {
-  const VERIFY_TOKEN = "my_secret_token_123"; // ← You can change this later
+export default async function handler(req, res) {
+  const VERIFY_TOKEN = "my_secret_token_123";
+  const PHONE_NUMBER_ID = "1350151684842334";
+  const ACCESS_TOKEN = "EAArC1ZBrUHQ0BSsQ70tveSx4svVaRLbdDJh69z3M8knnJzt3YktdADZA4fkDRZCqjHeTHOgqGdAWmZC09Y1HTHs6WZCel1YJYsI6R8itfTZC3LMgKJbbG0xldnvFZAyto5HWDwCi4JeRliZBJhwyi8wC4rQZCaAZCIT1INNqAZAZAnRVZBKZCT4tNfyGy9pR7R1LX0vl4CNa1rwiK50yPqS6hiWNKPv66cEA5bI6E9qlFfvZBRSReJIxRyRcwVin7DVU3Uo8TzZB84dsGHzc9LCvHH27nQqzuUgM";
 
   // ========== WEBHOOK VERIFICATION (GET) ==========
   if (req.method === "GET") {
@@ -8,7 +10,7 @@ export default function handler(req, res) {
     const challenge = req.query["hub.challenge"];
 
     if (mode === "subscribe" && token === VERIFY_TOKEN) {
-      console.log("Webhook verified successfully!");
+      console.log("Webhook verified!");
       return res.status(200).send(challenge);
     } else {
       return res.status(403).send("Forbidden");
@@ -19,11 +21,51 @@ export default function handler(req, res) {
   if (req.method === "POST") {
     const body = req.body;
 
-    console.log("Incoming message:", JSON.stringify(body, null, 2));
-
-    // Always reply 200 quickly so Meta is happy
+    // Always reply 200 quickly
     res.status(200).send("EVENT_RECEIVED");
 
-    // Later we will add the logic to reply to messages here
+    try {
+      // Check if there is a message
+      const entry = body.entry?.[0];
+      const changes = entry?.changes?.[0];
+      const value = changes?.value;
+      const message = value?.messages?.[0];
+
+      if (message && message.type === "text") {
+        const from = message.from;          // The sender's WhatsApp number
+        const text = message.text.body;     // The message they sent
+
+        console.log(`Message from ${from}: ${text}`);
+
+        // Reply to the user
+        await sendReply(from, `You said: ${text}`);
+      }
+    } catch (error) {
+      console.error("Error processing message:", error);
+    }
   }
+}
+
+// Function to send a reply
+async function sendReply(to, message) {
+  const url = `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${ACCESS_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: to,
+      type: "text",
+      text: {
+        body: message,
+      },
+    }),
+  });
+
+  const data = await response.json();
+  console.log("Reply sent:", data);
 }
