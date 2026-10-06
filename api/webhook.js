@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     const challenge = req.query["hub.challenge"];
 
     if (mode === "subscribe" && token === VERIFY_TOKEN) {
-      console.log("Webhook verified!");
+      console.log("Webhook verified successfully!");
       return res.status(200).send(challenge);
     } else {
       return res.status(403).send("Forbidden");
@@ -19,53 +19,55 @@ export default async function handler(req, res) {
 
   // ========== RECEIVE MESSAGES (POST) ==========
   if (req.method === "POST") {
-    const body = req.body;
-
-    // Always reply 200 quickly
-    res.status(200).send("EVENT_RECEIVED");
-
     try {
-      // Check if there is a message
-      const entry = body.entry?.[0];
-      const changes = entry?.changes?.[0];
-      const value = changes?.value;
-      const message = value?.messages?.[0];
+      const body = req.body;
+      console.log("Full incoming body:", JSON.stringify(body, null, 2));
+
+      // Always reply 200 quickly to Meta
+      res.status(200).send("EVENT_RECEIVED");
+
+      // Safely extract the message
+      const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
       if (message && message.type === "text") {
-        const from = message.from;          // The sender's WhatsApp number
-        const text = message.text.body;     // The message they sent
+        const from = message.from;
+        const text = message.text.body;
 
-        console.log(`Message from ${from}: ${text}`);
+        console.log(`Received message from ${from}: ${text}`);
 
-        // Reply to the user
+        // Send reply
         await sendReply(from, `You said: ${text}`);
+      } else {
+        console.log("No text message found in this webhook");
       }
     } catch (error) {
-      console.error("Error processing message:", error);
+      console.error("Error processing message:", error.message);
+      console.error(error.stack);
     }
   }
 }
 
-// Function to send a reply
 async function sendReply(to, message) {
-  const url = `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`;
+  try {
+    const url = `https://graph.facebook.com/v19.0/${PHONE_NUMBER_ID}/messages`;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${ACCESS_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: to,
-      type: "text",
-      text: {
-        body: message,
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${ACCESS_TOKEN}`,
+        "Content-Type": "application/json",
       },
-    }),
-  });
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: to,
+        type: "text",
+        text: { body: message },
+      }),
+    });
 
-  const data = await response.json();
-  console.log("Reply sent:", data);
+    const data = await response.json();
+    console.log("Reply API response:", data);
+  } catch (error) {
+    console.error("Error sending reply:", error.message);
+  }
 }
